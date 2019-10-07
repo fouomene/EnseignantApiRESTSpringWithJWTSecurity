@@ -1,10 +1,12 @@
 package org.isj.gestionenseignant.api.rest;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.isj.gestionenseignant.api.domaine.dto.EnseignantDto;
 import org.isj.gestionenseignant.api.domaine.entities.Enseignant;
 import org.isj.gestionenseignant.api.service.IService;
+import org.isj.gestionenseignant.api.service.mapper.EnseignantMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.google.common.collect.Lists;
 
 import io.swagger.annotations.Api;
 
@@ -27,12 +27,15 @@ public class EnseignantController {
 	@Autowired
 	private IService service;
 
+	@Autowired
+	private EnseignantMapper enseignantMapper;
+
 	@RequestMapping(value="/enseignants", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public List<EnseignantDto> getAllEnseignants() {
 
 		final List<Enseignant> enseignants = service.getAllEnseignantService();
 
-		final List<EnseignantDto> dtos=Lists.transform(enseignants, (Enseignant input) -> new EnseignantDto(input.getNom(),input.getUe(),input.getTelephone(),input.getUrlImage()));
+		final List<EnseignantDto> dtos= enseignants.stream().map(enseignantMapper::toDto).collect(Collectors.toList());
 
 		return dtos;
 	}
@@ -41,15 +44,10 @@ public class EnseignantController {
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	public EnseignantDto saveEnseignant(@RequestBody EnseignantDto enseignantDto) {
 
-		Enseignant enseignant = new Enseignant();
-		enseignant.setNom(enseignantDto.getNom());
-		enseignant.setUe(enseignantDto.getUe());
-		enseignant.setTelephone(enseignantDto.getTelephone());
-		enseignant.setUrlImage(enseignantDto.getUrlImage());
-
+		Enseignant enseignant = enseignantMapper.toEntity(enseignantDto);
 		enseignant= service.saveEnseignantService(enseignant);
 
-		return new EnseignantDto(enseignant.getNom(), enseignant.getUe(), enseignant.getTelephone(), enseignant.getUrlImage());
+		return enseignantMapper.toDto(enseignant);
 	}
 
 	@RequestMapping(value = "/enseignant/{telephone}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -58,7 +56,7 @@ public class EnseignantController {
 
 		final Enseignant enseignant= service.findEnseignantByTelephone(telephone);
 
-		return new EnseignantDto(enseignant.getNom(), enseignant.getUe(), enseignant.getTelephone(), enseignant.getUrlImage());
+		return enseignantMapper.toDto(enseignant);
 	}
 
 }
